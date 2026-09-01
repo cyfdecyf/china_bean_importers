@@ -116,6 +116,8 @@ class Importer(CsvImporter):
                     account1 = source_config["huabei_account"]
                 elif method == "余额宝":
                     account1 = source_config["yuebao_account"]
+                elif method.startswith("支付宝小荷包("):
+                    account1 = source_config["xiaohebao_account"]
                 elif tail := match_card_tail(method):
                     account1 = find_account_by_card_number(self.config, tail)
                     my_assert(account1, f"Unknown card number {tail}", lineno, row)

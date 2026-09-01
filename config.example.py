@@ -12,6 +12,7 @@ config = {
             "yuebao_account": "Assets:Alipay:YuEBao",
             "red_packet_income_account": "Income:Alipay:RedPacket",
             "red_packet_expense_account": "Expenses:Alipay:RedPacket",
+            "xiaohebao_account": "Assets:Alipay:XiaoHeBao",
             "category_mapping": {
                 "交通出行": "Expenses:Travel",
             },
