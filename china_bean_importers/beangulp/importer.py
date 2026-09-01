@@ -123,6 +123,42 @@ class CsvOrXlsxImporter(BaseImporter):
         except BaseException:
             return False
 
+class XlsImporter(BaseImporter):
+    def __init__(self, config) -> None:
+        super().__init__(config)
+        self.encoding: str = "utf-8"
+        self.filetype = "xls"
+
+    def identify(self, filepath: str) -> bool:
+        if self.match_keywords is None:
+            raise "match_keywords not set"
+        try:
+            if filepath.endswith(".xls"):
+                try:
+                    import pandas as pd
+                    import xlrd
+                except ImportError:
+                    print(f"WARNING: missing pandas or xlrd, cannot parse xls\n", file=sys.stderr)
+                    return False
+
+                df = pd.read_excel(filepath)
+                csv = df.to_csv(index=False)
+                self.filetype = "xls"
+                self.full_content = csv
+            else:
+                return False
+            self.content = []
+            for ln in self.full_content.splitlines():
+                if (l := ln.strip()) != "":
+                    self.content.append(l)
+            if all(
+                map(lambda c: c in self.full_content, self.match_keywords)
+            ):
+                self.parse_metadata(filepath)
+                return True
+        except BaseException:
+            return False
+
 
 class PdfImporter(BaseImporter):
     def __init__(self, config) -> None:

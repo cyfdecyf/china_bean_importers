@@ -5,10 +5,10 @@ import csv
 import re
 
 from china_bean_importers.common import *
-from china_bean_importers.beangulp.importer import CsvImporter
+from china_bean_importers.beangulp.importer import XlsImporter
 
 
-class Importer(CsvImporter):
+class Importer(XlsImporter):
     def __init__(self, config) -> None:
         super().__init__(config)
         self.encoding = "utf8"
@@ -53,7 +53,7 @@ class Importer(CsvImporter):
                     cash_type,
                     time,
                     amt,
-                    _,
+                    balance,
                     attach,
                     payee,
                 ) = row[:10]
@@ -67,11 +67,14 @@ class Importer(CsvImporter):
                     raise Exception("Unknown currency!")
 
                 units = data.Amount(D(amt), cash)
+                balance = data.Amount(D(balance), cash)
 
                 # fill metadata
                 if cash_type != "":
                     metadata["cash_type"] = cash_type
-                metadata["attach"] = attach
+                if attach != "":
+                    narration += " " + attach
+                metadata["balance"] = str(balance)
 
                 expense = None
                 # determine direction
@@ -120,4 +123,5 @@ class Importer(CsvImporter):
                 )
                 entries.append(txn)
 
+        print(entries)
         return entries
