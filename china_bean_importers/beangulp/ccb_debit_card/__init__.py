@@ -123,5 +123,4 @@ class Importer(XlsImporter):
                 )
                 entries.append(txn)
 
-        print(entries)
         return entries
