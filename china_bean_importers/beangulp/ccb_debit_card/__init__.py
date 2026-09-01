@@ -22,9 +22,14 @@ class Importer(XlsImporter):
             self.end = parse(m[1])
         match = re.search("卡号/账号:([0-9]{19})", self.full_content)
         my_assert(match, "Invalid file, no card number found!", 0, 0)
+
         card_number = match[0]
         self.card_acc = find_account_by_card_number(self.config, card_number[-4:])
         my_assert(self.card_acc, f"Unknown card number {card_number}", 0, 0)
+
+        match = re.search(r"客户名称:\s*(\w+)", self.full_content)
+        assert match
+        self.real_name = match[1]
 
     def extract(self, filepath: str, existing=None):
         entries = []
@@ -92,6 +97,14 @@ class Importer(XlsImporter):
                 tags = tags.union(new_tags)
                 if account2 is None:
                     account2 = unknown_account(self.config, expense)
+
+                # Handle transfer to credit/debit cards
+                parts = payee.split("/")
+                if len(parts) == 2 and parts[1] == self.real_name:
+                    card_number2 = parts[0][-4:]
+                    new_account = find_account_by_card_number(self.config, card_number2)
+                    if new_account is not None:
+                        account2 = new_account
 
                 # create transaction
                 txn = data.Transaction(

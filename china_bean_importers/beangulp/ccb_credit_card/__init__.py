@@ -21,7 +21,7 @@ class Importer(Importer):
             from bs4 import BeautifulSoup
             import email
             from email import policy
-            import quopri, base64
+            import base64
             from html import unescape
 
             try:
@@ -83,8 +83,8 @@ class Importer(Importer):
                     # 支付宝 / 财付通 / etc
                     hypen_idx = narration.index("-")
                     narration, payee = (
-                        narration[:hypen_idx].strip(),
                         narration[hypen_idx + 1 :].strip(),
+                        narration[:hypen_idx].strip(),
                     )
 
                 units = -data.Amount(D(sett_amount), sett_curr.strip())
