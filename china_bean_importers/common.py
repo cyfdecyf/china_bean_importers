@@ -100,8 +100,11 @@ def find_account_by_card_number(config, card_number):
         card_number = str(card_number)
     for prefix, accounts in config["card_accounts"].items():
         for bank, numbers in accounts.items():
-            if card_number[-4:] in numbers:
-                return f"{prefix}:{bank}:{card_number[-4:]}"
+            # Match either the configured tail number itself, or a complete
+            # card number ending with it, at the bank level.
+            for num in numbers:
+                if card_number.endswith(num):
+                    return f"{prefix}:{bank}"
 
     return None
 
