@@ -103,9 +103,10 @@ class Importer(CsvOrXlsxImporter):
                     account1 = source_config["lingqiantong_account"]
                 elif method == "零钱通" and status in [
                     "对方已收钱",
-                    "已转账"
+                    "已转账",
+                    "支付成功",
                 ]:
-                    # 零钱通转账
+                    # 零钱通转账 / 零钱通商户消费
                     account1 = source_config["lingqiantong_account"]
                 elif method == "零钱通" and type.startswith("零钱通转出-到"):
                     # 零钱通转入卡
