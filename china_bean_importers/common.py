@@ -1,6 +1,6 @@
 import re
 import sys
-import typing
+from typing import NamedTuple
 
 
 card_tail_pattern = re.compile(r".*银行.*\(([0-9]{4})\)")
@@ -23,17 +23,17 @@ currency_code_map = {
 SAME_AS_NARRATION = object()
 
 
-class BillDetailMapping(typing.NamedTuple):
+class BillDetailMapping(NamedTuple):
     # used to match an item's narration
-    narration_keywords: typing.Optional[list[str]] = None
+    narration_keywords: list[str] | None = None
     # used to match an item's payee
-    payee_keywords: typing.Optional[list[str]] = None
+    payee_keywords: list[str] | None = None
     # destination account (None means not specified)
-    destination_account: typing.Optional[str] = None
+    destination_account: str | None = None
     # tags to append in bill item
-    additional_tags: typing.Optional[list[str]] = None
+    additional_tags: list[str] | None = None
     # other metadata to append in bill
-    additional_metadata: typing.Optional[dict[str, object]] = None
+    additional_metadata: dict[str, object] | None = None
     # priority (larger means higher priority, 0 means lowest)
     priority: int = 0
     # match logic ("OR" or "AND")
@@ -46,7 +46,7 @@ class BillDetailMapping(typing.NamedTuple):
 
     def match(
         self, desc: str, payee: str
-    ) -> tuple[typing.Optional[str], dict[str, object], set[str], int]:
+    ) -> tuple[str | None, dict[str, object], set[str], int]:
         assert self.match_logic == "OR" or self.match_logic == "AND"
 
         # match narration first

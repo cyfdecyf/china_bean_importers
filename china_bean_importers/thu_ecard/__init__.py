@@ -1,7 +1,9 @@
+import csv
+from decimal import Decimal
+
 from dateutil.parser import parse
 from beancount.core import data
 from beancount.core.data import D
-import csv
 
 from china_bean_importers.common import *
 from china_bean_importers.importer import CsvImporter
@@ -24,11 +26,8 @@ class Importer(CsvImporter):
     def extract(self, filepath: str, existing=None):
         entries = []
 
-        def to_yuan(fen) -> str:
-            from decimal import Decimal
-
-            d = (Decimal(fen) / 100).quantize(Decimal(".01"))
-            return d
+        def to_yuan(fen) -> Decimal:
+            return (Decimal(fen) / 100).quantize(Decimal(".01"))
 
         for lineno, row in enumerate(csv.reader(self.content)):
             row = [col.strip() for col in row]

@@ -1,7 +1,8 @@
+import re
+from datetime import datetime
+
 from beangulp import Importer
 from dateutil.parser import parse
-from datetime import datetime
-from typing import Optional
 
 from china_bean_importers.common import *
 
@@ -14,13 +15,13 @@ class BaseImporter(Importer):
     def __init__(self, config) -> None:
         super().__init__()
         self.config: dict = config
-        self.match_keywords: list[str] = None
-        self.file_account_name: str = None
+        self.match_keywords: list[str] | None = None
+        self.file_account_name: str | None = None
         self.full_content: str = ""
         self.content: list[str] = []
-        self.start: datetime = None
-        self.end: datetime = None
-        self.filetype: str = None
+        self.start: datetime | None = None
+        self.end: datetime | None = None
+        self.filetype: str | None = None
 
     def identify(self, filepath: str) -> bool:
         raise "Unimplemented"
@@ -33,10 +34,10 @@ class BaseImporter(Importer):
             raise "file_account_name not set"
         return self.file_account_name
 
-    def date(self, filepath: str) -> Optional[datetime.date]:
+    def date(self, filepath: str) -> datetime | None:
         return self.start
 
-    def filename(self, filepath: str) -> Optional[str]:
+    def filename(self, filepath: str) -> str | None:
         assert self.filetype is not None
         if self.end:
             return f"to.{self.end.date().isoformat()}.{self.filetype}"
@@ -162,15 +163,13 @@ class XlsImporter(BaseImporter):
 
 class PdfImporter(BaseImporter):
     def __init__(self, config) -> None:
-        import re
-
         super().__init__(config)
         self.filetype = "pdf"
-        self.column_offsets: list[int] = None
-        self.content_start_keyword: str = None
-        self.content_start_regex = None
-        self.content_end_keyword: str = None
-        self.content_end_regex = None
+        self.column_offsets: list[int] | None = None
+        self.content_start_keyword: str | None = None
+        self.content_start_regex: re.Pattern | None = None
+        self.content_end_keyword: str | None = None
+        self.content_end_regex: re.Pattern | None = None
 
     def identify(self, filepath: str) -> bool:
         if self.match_keywords is None:
@@ -255,13 +254,11 @@ class PdfImporter(BaseImporter):
 
 class PdfTableImporter(BaseImporter):
     def __init__(self, config) -> None:
-        import re
-
         super().__init__(config)
         self.filetype = "pdf"
-        self.vertical_lines: list[int] = None
-        self.header_first_cell: str = None
-        self.header_first_cell_regex = None
+        self.vertical_lines: list[int] | None = None
+        self.header_first_cell: str | None = None
+        self.header_first_cell_regex: re.Pattern | None = None
 
     def identify(self, filepath: str) -> bool:
         if self.match_keywords is None:
