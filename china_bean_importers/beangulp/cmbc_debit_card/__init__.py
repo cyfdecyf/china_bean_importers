@@ -16,6 +16,8 @@ def gen_txn(config, filepath, parts, lineno, flag, card_acc):
     # fill to 11 fields
     if parts[0][:2] == "20":
         parts = [""] * 2 + parts
+    elif parts[0] == "其他":
+        parts = [""] + parts
     parts = parts + [""] * (11 - len(parts))
 
     if "/" in parts[9]:
@@ -103,7 +105,7 @@ class Importer(PdfImporter):
         super().__init__(config)
         self.match_keywords = ["民生银行", "个人账户对账单"]
         self.file_account_name = "cmbc_debit_card"
-        self.column_offsets = [22, 56, 97, 173, 335, 413, 448, 482, 533, 568, 696]
+        self.column_offsets = [22, 56, 97, 173, 300, 400, 448, 482, 533, 568, 696]
         self.content_start_keyword = "对方行名"
         self.content_end_keyword = "______________"
 
