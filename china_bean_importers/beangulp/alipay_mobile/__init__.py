@@ -56,6 +56,10 @@ class Importer(CsvImporter):
                     status,
                     serial,
                 ) = row[:10]
+
+                if "交易关闭" in status or "解冻成功" in status:
+                    continue
+
                 time = parse(time)
                 units = data.Amount(D(amt), "CNY")
                 metadata["serial"] = serial
@@ -80,20 +84,28 @@ class Importer(CsvImporter):
                     if "退款" in narration or "退款成功" in status:
                         expense = False
                         tags.add("refund")
-                    if method == "余额宝" and "收益" in narration:
+                    elif (method == "余额宝" and "收益" in narration) or (
+                        narration == "余额宝-转出到余额"
+                    ):
                         expense = False
-                    if payee == "余额宝" and "转入" in narration:
+                    elif (
+                        (payee == "余额宝" and "转入" in narration)
+                        or (method == "花呗" and "还款" in narration)
+                        or (
+                            ("花呗" in payee or "信用购" in payee)
+                            and ("还款" in narration)
+                        )
+                        or (narration == "余额宝-单次转入")
+                        or (narration == "余额宝-转出到银行卡")
+                    ):
                         expense = True
-                    if method == "花呗" and "还款" in narration:
-                        expense = True
-                    if payee == "花呗" and "还款" in narration:
-                        expense = True
-                    if narration == "余额宝-转出到余额":
-                        expense = False
-                    if narration == "余额宝-单次转入":
-                        expense = True
+                    elif category == "投资理财":
+                        if "买入" in narration:
+                            expense = True
+                        elif "卖出" in narration:
+                            expense = False
+
                     if expense is None:
-                        # if '交易关闭' in status or '解冻成功' in status:
                         my_warn(
                             f"Transaction type not recognized, please confirm",
                             lineno,
@@ -124,11 +136,11 @@ class Importer(CsvImporter):
 
                 # find from 商品说明 and 交易对方
                 account2 = None
-                if payee == "余额宝" and "自动转入" in narration:
-                    account2 = source_config["yuebao_account"]
-                elif method == "余额" and narration == "余额宝-转出到余额":
-                    account2 = source_config["yuebao_account"]
-                elif narration == "余额宝-单次转入":
+                if (
+                    (payee == "余额宝" and "自动转入" in narration)
+                    or (method == "余额" and narration == "余额宝-转出到余额")
+                    or (narration == "余额宝-单次转入")
+                ):
                     account2 = source_config["yuebao_account"]
                 elif category == "转账红包":
                     account2 = (
@@ -156,9 +168,16 @@ class Importer(CsvImporter):
                     else:
                         account2 = unknown_account(self.config, expense)
 
-                if "&" in method:
+                if (
+                    ("&" in method)
+                    and ("红包" not in method)
+                    and ("优惠" not in method)
+                    and ("信用卡积分抵扣" not in method)
+                    and ("立减" not in method)
+                ):
+                    # The exported CSV file does not contain amount of 红包, 优惠, so just ignore them.
                     my_warn(
-                        f"Multiple payment methods found, please confirm", lineno, row
+                        "Multiple payment methods found, please confirm", lineno, row
                     )
                     tags.add("confirmation-needed")
 
