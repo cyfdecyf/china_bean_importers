@@ -1,8 +1,6 @@
 # china_bean_importers
 
-[![Test Python package](https://github.com/jiegec/china_bean_importers/actions/workflows/test_package.yml/badge.svg)](https://github.com/jiegec/china_bean_importers/actions/workflows/test_package.yml)
-
-[![PyPI](https://badge.fury.io/py/china-bean-importers.svg)](https://pypi.org/project/china-bean-importers/)
+[![Test Python package](https://github.com/cyfdecyf/china_bean_importers/actions/workflows/test_package.yml/badge.svg)](https://github.com/cyfdecyf/china_bean_importers/actions/workflows/test_package.yml)
 
 Beancount 导入脚本，支持的数据源包括：
 
@@ -17,26 +15,24 @@ Beancount 导入脚本，支持的数据源包括：
 - 清华大学校园卡（新、旧）
 - 汇丰香港信用卡、储蓄账户
 
+本仓库是 [jiegec/china_bean_importers](https://github.com/jiegec/china_bean_importers) 的 hard fork：仅支持 beancount v3 (beangulp)，要求 Python >= 3.14，不再发布到 PyPI。
+
 ## 安装
 
-使用 pypi 安装：
+克隆本仓库或作为 submodule：
 
 ```shell
-pip3 install china-bean-importers
-```
-
-或者克隆本仓库或作为 submodule：
-
-```shell
-git clone https://github.com/jiegec/china_bean_importers
+git clone https://github.com/cyfdecyf/china_bean_importers
 # or
-git submodule add git@github.com:jiegec/china_bean_importers.git
+git submodule add git@github.com:cyfdecyf/china_bean_importers.git
 ```
 
-然后安装 importer 和依赖：
+然后安装 importer 和依赖（推荐使用 [uv](https://docs.astral.sh/uv/)）：
 
 ```shell
 cd china_bean_importers
+uv sync
+# or
 pip install --editable .
 ```
 
