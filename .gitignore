@@ -1,9 +1,10 @@
-venv/
-__pycache__
+.venv/
+__pycache__/
 secret.py
 dist/
 *.egg-info/
 build/
 
 .vscode/
-poetry.lock
+.zcode/
+.ropeproject/
