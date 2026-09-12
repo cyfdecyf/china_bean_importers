@@ -51,7 +51,7 @@ def gen_txn(config, filepath, parts, lineno, flag, card_acc, real_name):
 
     # Handle transfer to credit/debit cards
     # parts[5]: 对手信息
-    if payee.startswith(real_name) and payee_account:
+    if payee_account:
         new_account = find_account_by_card_number(config, payee_account)
         if new_account is not None:
             account2 = new_account
@@ -92,7 +92,7 @@ class Importer(PdfImporter):
 
         super().__init__(config)
         self.match_keywords = ["招商银行交易流水"]
-        self.file_account_name = "cmbc_debit_card"
+        self.file_account_name = "cmb_debit_card"
         self.column_offsets = [30, 50, 100, 200, 280, 350, 400]
         self.content_start_keyword = "Party"  # "Counter Party"
         self.content_end_regex = re.compile(
