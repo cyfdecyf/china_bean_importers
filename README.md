@@ -50,7 +50,7 @@ pip install --editable .
 import beangulp
 import sys
 import os
-from china_bean_importers.beangulp import (
+from china_bean_importers import (
     wechat,
     alipay_web,
     alipay_mobile,
