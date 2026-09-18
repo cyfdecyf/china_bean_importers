@@ -57,10 +57,14 @@ class Importer(Importer):
                     payee = row[7]
                     narration = row[8]
 
-                    account1 = "Assets:Alipay"
-                    account2 = find_destination_account(
-                        self.config, payee, narration, row[10] == "支出"
+                    account1 = self.config["importers"]["alipay"]["account"]
+                    account2, new_meta, new_tags = match_destination_and_metadata(
+                        self.config, narration, payee
                     )
+                    metadata.update(new_meta)
+                    tags = set(new_tags)
+                    if account2 is None:
+                        account2 = unknown_account(self.config, row[10] == "支出")
 
                     if row[10] == "支出":
                         units1 = -units
@@ -75,7 +79,7 @@ class Importer(Importer):
                         flag=self.FLAG,
                         payee=payee,
                         narration=narration,
-                        tags=data.EMPTY_SET,
+                        tags=tags,
                         links=data.EMPTY_SET,
                         postings=[
                             data.Posting(

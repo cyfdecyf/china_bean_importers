@@ -1,8 +1,8 @@
 import re
+import sys
 from datetime import datetime
 
 from beangulp import Importer
-from dateutil.parser import parse
 
 from china_bean_importers.common import *
 
@@ -24,14 +24,14 @@ class BaseImporter(Importer):
         self.filetype: str | None = None
 
     def identify(self, filepath: str) -> bool:
-        raise "Unimplemented"
+        raise NotImplementedError
 
     def parse_metadata(self, filepath: str):
-        raise "Unimplemented"
+        raise NotImplementedError
 
     def account(self, filepath: str) -> str:
         if self.file_account_name is None:
-            raise "file_account_name not set"
+            raise NotImplementedError("file_account_name not set")
         return self.file_account_name
 
     def date(self, filepath: str) -> datetime | None:
@@ -55,10 +55,10 @@ class BaseImporter(Importer):
         )
 
     def extract_rows(self) -> list[list[str]]:
-        raise "Unimplemented"
+        raise NotImplementedError
 
     def generate_tx(self, row: list[str], lineno: int, filepath: str):
-        raise "Unimplemented"
+        raise NotImplementedError
 
 
 class CsvImporter(BaseImporter):
@@ -69,7 +69,7 @@ class CsvImporter(BaseImporter):
 
     def identify(self, filepath: str) -> bool:
         if self.match_keywords is None:
-            raise "match_keywords not set"
+            raise NotImplementedError("match_keywords not set")
         try:
             with open(filepath, "r", encoding=self.encoding) as f:
                 self.full_content = f.read()
@@ -82,7 +82,8 @@ class CsvImporter(BaseImporter):
                 ):
                     self.parse_metadata(filepath)
                     return True
-        except BaseException:
+                return False
+        except Exception:
             return False
 
 class CsvOrXlsxImporter(BaseImporter):
@@ -93,14 +94,17 @@ class CsvOrXlsxImporter(BaseImporter):
 
     def identify(self, filepath: str) -> bool:
         if self.match_keywords is None:
-            raise "match_keywords not set"
+            raise NotImplementedError("match_keywords not set")
         try:
             if filepath.endswith(".xlsx"):
                 try:
                     import pandas as pd
-                    import openpyxl
+                    import openpyxl  # noqa: F401
                 except ImportError:
-                    print(f"WARNING: missing pandas or openpyxl, cannot parse xlsx\n", file=sys.stderr)
+                    print(
+                        "WARNING: missing pandas or openpyxl, cannot parse xlsx\n",
+                        file=sys.stderr,
+                    )
                     return False
 
                 df = pd.read_excel(filepath)
@@ -121,8 +125,10 @@ class CsvOrXlsxImporter(BaseImporter):
             ):
                 self.parse_metadata(filepath)
                 return True
-        except BaseException:
             return False
+        except Exception:
+            return False
+
 
 class XlsImporter(BaseImporter):
     def __init__(self, config) -> None:
@@ -132,14 +138,17 @@ class XlsImporter(BaseImporter):
 
     def identify(self, filepath: str) -> bool:
         if self.match_keywords is None:
-            raise "match_keywords not set"
+            raise NotImplementedError("match_keywords not set")
         try:
             if filepath.endswith(".xls"):
                 try:
                     import pandas as pd
-                    import xlrd
+                    import xlrd  # noqa: F401
                 except ImportError:
-                    print(f"WARNING: missing pandas or xlrd, cannot parse xls\n", file=sys.stderr)
+                    print(
+                        "WARNING: missing pandas or xlrd, cannot parse xls\n",
+                        file=sys.stderr,
+                    )
                     return False
 
                 df = pd.read_excel(filepath)
@@ -157,7 +166,8 @@ class XlsImporter(BaseImporter):
             ):
                 self.parse_metadata(filepath)
                 return True
-        except BaseException:
+            return False
+        except Exception:
             return False
 
 
@@ -173,7 +183,7 @@ class PdfImporter(BaseImporter):
 
     def identify(self, filepath: str) -> bool:
         if self.match_keywords is None:
-            raise "match_keywords not set"
+            raise NotImplementedError("match_keywords not set")
 
         if "pdf" not in filepath.lower():
             return False
@@ -262,7 +272,7 @@ class PdfTableImporter(BaseImporter):
 
     def identify(self, filepath: str) -> bool:
         if self.match_keywords is None:
-            raise "match_keywords not set"
+            raise NotImplementedError("match_keywords not set")
 
         if "pdf" not in filepath.lower():
             return False

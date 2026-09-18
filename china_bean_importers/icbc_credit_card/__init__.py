@@ -3,6 +3,7 @@ from beancount.core import data
 from beangulp import Importer
 from dateutil.parser import parse
 import re
+import sys
 
 from china_bean_importers.common import *
 from china_bean_importers.importer import FLAG

@@ -68,7 +68,7 @@ class Importer(Importer):
                 ).decode()
                 self.body = BeautifulSoup(raw_body_html, features="lxml")
                 return self.body.title.text == "中国银行电子帐单"
-            except BaseException:
+            except Exception:
                 return False
 
     def account(self, filepath: str):

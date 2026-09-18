@@ -36,14 +36,14 @@ class Importer(Importer):
                     ):
                         return True
                 return False
-            except:
+            except Exception:
                 return False
         elif filepath.upper().endswith(".EML"):
             self.type = "email"
             from bs4 import BeautifulSoup
             import email
             from email import policy
-            import quopri, base64
+            import base64
             from html import unescape
 
             try:
@@ -65,7 +65,7 @@ class Importer(Importer):
                 ].parent.nextSibling.font.text
                 self.stmt_date = parse(stmtDateCell)
                 return "民生信用卡" in raw_email["Subject"]
-            except BaseException:
+            except Exception:
                 return False
 
     def account(self, filepath: str):
@@ -160,7 +160,7 @@ class Importer(Importer):
 
         return entries
 
-    def generate_tx(self, row: list, lineno: int, file):
+    def generate_tx(self, row: list, lineno: int, filepath: str):
         #   0      1        2       3    4    5
         # 交易日, 记账日, 卡号末四位, 摘要, 金额, 货币
 

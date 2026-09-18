@@ -40,7 +40,7 @@ class Importer(Importer):
                 stmtDateCell = self.body.find("font", string="本期账单日").parent.parent.parent.find_all("font")[2].text
                 self.stmt_date = parse(stmtDateCell)
                 return "中国建设银行信用卡" in raw_email["Subject"]
-            except BaseException:
+            except Exception:
                 return False
 
     def account(self, filepath: str):
