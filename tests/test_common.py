@@ -7,10 +7,13 @@ from china_bean_importers.common import (
     BillDetailMapping,
     find_account_by_card_number,
     in_blacklist,
+    make_two_posting_txn,
     match_card_tail,
     match_currency_code,
     match_destination_and_metadata,
     open_pdf,
+    resolve_destination,
+    should_skip_by_blacklist,
     unknown_account,
 )
 
@@ -168,6 +171,103 @@ class TestMatchDestinationAndMetadata:
         ]
         account, _, _ = match_destination_and_metadata(config, "京东", None)
         assert account == "Expenses:JD:Sub"
+
+
+class TestResolveDestination:
+    def test_fallback_to_unknown(self):
+        config = helpers.make_config()
+        metadata, tags = {}, set()
+        account = resolve_destination(config, "未知", None, True, metadata, tags)
+        assert account == "Expenses:Unknown"
+        assert metadata == {}
+
+    def test_mapping(self):
+        config = helpers.make_config()
+        metadata, tags = {}, set()
+        account = resolve_destination(config, "京东购物", None, True, metadata, tags)
+        assert account == "Expenses:JD"
+        assert metadata == {"platform": "京东"}
+
+    def test_special_case_wins(self):
+        config = helpers.make_config()
+        metadata, tags = {}, set()
+        account = resolve_destination(
+            config, "京东购物", None, False, metadata, tags, "Income:Special"
+        )
+        assert account == "Income:Special"
+        # metadata/tags from mappings are still merged
+        assert metadata == {"platform": "京东"}
+
+
+class TestMakeTwoPostingTxn:
+    def test_basic(self):
+        import datetime
+
+        from beancount.core import data
+        from beancount.core.data import D
+
+        metadata = data.new_metadata("file", 1)
+        tags = {"refund"}
+        txn = make_two_posting_txn(
+            "file",
+            1,
+            datetime.date(2024, 1, 5),
+            "商家",
+            "京东",
+            tags,
+            metadata,
+            "Assets:A",
+            "Expenses:B",
+            data.Amount(D("-25.00"), "CNY"),
+        )
+        assert txn.payee == "商家"
+        assert txn.narration == "京东"
+        assert txn.tags == {"refund"}
+        assert txn.flag == "*"
+        assert [p.account for p in txn.postings] == ["Assets:A", "Expenses:B"]
+        assert str(txn.postings[0].units) == "-25.00 CNY"
+        assert txn.postings[1].units is None
+
+
+class TestShouldSkipByBlacklist:
+    def test_normal_not_skipped(self, capsys):
+        config = helpers.make_config()
+        from beancount.core import data
+        from beancount.core.data import D
+
+        units = data.Amount(D("-25.00"), "CNY")
+        assert not should_skip_by_blacklist(config, "京东购物", "2024-01-05", units)
+        assert capsys.readouterr().err == ""
+
+    def test_blacklisted_expense_skipped(self, capsys):
+        config = helpers.make_config()
+        from beancount.core import data
+        from beancount.core.data import D
+
+        units = data.Amount(D("-25.00"), "CNY")
+        assert should_skip_by_blacklist(config, "支付宝转账", "2024-01-05", units)
+        err = capsys.readouterr().err
+        assert "Item in blacklist" in err and "Expense skipped" in err
+
+    def test_blacklisted_income_kept(self, capsys):
+        config = helpers.make_config()
+        from beancount.core import data
+        from beancount.core.data import D
+
+        units = data.Amount(D("25.00"), "CNY")
+        assert not should_skip_by_blacklist(config, "支付宝退款", "2024-01-05", units)
+        assert "Income kept" in capsys.readouterr().err
+
+    def test_blacklisted_refund_skipped_when_flagged(self, capsys):
+        config = helpers.make_config()
+        from beancount.core import data
+        from beancount.core.data import D
+
+        units = data.Amount(D("25.00"), "CNY")
+        assert should_skip_by_blacklist(
+            config, "支付宝退款", "2024-01-05", units, refund=True
+        )
+        assert "Refund skipped" in capsys.readouterr().err
 
 
 class TestOpenPdf:

@@ -175,18 +175,10 @@ class Importer(CsvOrXlsxImporter):
                 elif method == "零钱通" and type.startswith("零钱通转出-到"):
                     account2 = source_config["lingqiantong_account"]
 
-                # 9. find by narration and payee
-                new_account, new_meta, new_tags = match_destination_and_metadata(
-                    self.config, narration, payee
+                # 9. find by narration and payee (special cases above win)
+                account2 = resolve_destination(
+                    self.config, narration, payee, expense, metadata, tags, account2
                 )
-                if account2 is None:
-                    account2 = new_account
-                metadata.update(new_meta)
-                tags = tags.union(new_tags)
-
-                # final fallback
-                if account2 is None:
-                    account2 = unknown_account(self.config, expense)
 
                 # check status
                 if (
@@ -210,33 +202,19 @@ class Importer(CsvOrXlsxImporter):
                     my_warn(f"Unhandled tx status: {status}", lineno, row)
 
                 # create transaction
-                txn = data.Transaction(
-                    meta=metadata,
-                    date=time.date(),
-                    flag=self.FLAG,
-                    payee=payee,
-                    narration=narration,
-                    tags=tags,
-                    links=data.EMPTY_SET,
-                    postings=[
-                        data.Posting(
-                            account=account1,
-                            units=units,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                        data.Posting(
-                            account=account2,
-                            units=None,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                    ],
+                entries.append(
+                    make_two_posting_txn(
+                        filepath,
+                        lineno,
+                        time.date(),
+                        payee,
+                        narration,
+                        tags,
+                        metadata,
+                        account1,
+                        account2,
+                        units,
+                    )
                 )
-                entries.append(txn)
 
         return entries

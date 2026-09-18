@@ -6,7 +6,6 @@ import re
 import sys
 
 from china_bean_importers.common import *
-from china_bean_importers.importer import FLAG
 
 REGEX_YYYY_MM_DD = re.compile(r"(\d+)年(\d+)月(\d+)日")
 
@@ -187,37 +186,19 @@ class Importer(Importer):
         if is_expense:
             units = -units
 
-        if m := match_destination_and_metadata(self.config, narration, payee):
-            (account2, new_meta, new_tags) = m
-            metadata.update(new_meta)
-            tags = tags.union(new_tags)
-        if account2 is None:
-            account2 = unknown_account(self.config, units.number < 0)
+        account2 = resolve_destination(
+            self.config, narration, payee, units.number < 0, metadata, tags
+        )
 
-        return data.Transaction(
-            meta=metadata,
-            date=date,
-            flag=self.FLAG,
-            payee=payee,
-            narration=narration,
-            tags=tags,
-            links=data.EMPTY_SET,
-            postings=[
-                data.Posting(
-                    account=account1,
-                    units=units,
-                    cost=None,
-                    price=None,
-                    flag=None,
-                    meta=None,
-                ),
-                data.Posting(
-                    account=account2,
-                    units=None,
-                    cost=None,
-                    price=None,
-                    flag=None,
-                    meta=None,
-                ),
-            ],
+        return make_two_posting_txn(
+            file_name,
+            lineno,
+            date,
+            payee,
+            narration,
+            tags,
+            metadata,
+            account1,
+            account2,
+            units,
         )

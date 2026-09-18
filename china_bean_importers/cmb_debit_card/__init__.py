@@ -42,12 +42,7 @@ def gen_txn(config, filepath, parts, lineno, flag, card_acc, real_name):
     if payee_account:
         metadata["payee_account"] = payee_account
 
-    if m := match_destination_and_metadata(config, narration, payee):
-        (account2, new_meta, new_tags) = m
-        metadata.update(new_meta)
-        tags = tags.union(new_tags)
-    if account2 is None:
-        account2 = unknown_account(config, True)
+    account2 = resolve_destination(config, narration, payee, True, metadata, tags)
 
     # Handle transfer to credit/debit cards
     # parts[5]: 对手信息
@@ -56,34 +51,9 @@ def gen_txn(config, filepath, parts, lineno, flag, card_acc, real_name):
         if new_account is not None:
             account2 = new_account
 
-    txn = data.Transaction(
-        meta=metadata,
-        date=date,
-        flag=flag,
-        payee=payee,
-        narration=narration,
-        tags=tags,
-        links=data.EMPTY_SET,
-        postings=[
-            data.Posting(
-                account=card_acc,
-                units=units1,
-                cost=None,
-                price=None,
-                flag=None,
-                meta=None,
-            ),
-            data.Posting(
-                account=account2,
-                units=None,
-                cost=None,
-                price=None,
-                flag=None,
-                meta=None,
-            ),
-        ],
+    return make_two_posting_txn(
+        filepath, lineno, date, payee, narration, tags, metadata, card_acc, account2, units1
     )
-    return txn
 
 
 class Importer(PdfImporter):

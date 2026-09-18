@@ -189,33 +189,19 @@ class Importer(CsvImporter):
                     tags.add("confirmation-needed")
 
                 # create transaction
-                txn = data.Transaction(
-                    meta=metadata,
-                    date=time.date(),
-                    flag=self.FLAG,
-                    payee=payee,
-                    narration=narration,
-                    tags=tags,
-                    links=data.EMPTY_SET,
-                    postings=[
-                        data.Posting(
-                            account=account1,
-                            units=units,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                        data.Posting(
-                            account=account2,
-                            units=None,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                    ],
+                entries.append(
+                    make_two_posting_txn(
+                        filepath,
+                        lineno,
+                        time.date(),
+                        payee,
+                        narration,
+                        tags,
+                        metadata,
+                        account1,
+                        account2,
+                        units,
+                    )
                 )
-                entries.append(txn)
 
         return entries

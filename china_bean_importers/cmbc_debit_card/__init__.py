@@ -30,17 +30,8 @@ def gen_txn(config, filepath, parts, lineno, flag, card_acc):
     units1 = data.Amount(D(parts[4]), "CNY")
 
     # check blacklist
-    if in_blacklist(config, narration):
-        print(
-            f"Item in blacklist: {date} {narration} [{units1}]",
-            file=sys.stderr,
-            end=" -- ",
-        )
-        if units1 < data.Amount(D(0), "CNY"):
-            print(f"Expense skipped", file=sys.stderr)
-            return None
-        else:
-            print(f"Income kept in record", file=sys.stderr)
+    if should_skip_by_blacklist(config, narration, date, units1):
+        return None
 
     metadata = data.new_metadata(filepath, lineno)
     metadata["time"] = full_time.time().isoformat()
@@ -53,12 +44,9 @@ def gen_txn(config, filepath, parts, lineno, flag, card_acc):
 
     tags = set()
 
-    if m := match_destination_and_metadata(config, narration, payee):
-        (account2, new_meta, new_tags) = m
-        metadata.update(new_meta)
-        tags = tags.union(new_tags)
-    if account2 is None:
-        account2 = unknown_account(config, units1.number < 0)
+    account2 = resolve_destination(
+        config, narration, payee, units1.number < 0, metadata, tags
+    )
 
     # try to find transfer destination account
     if parts[9] != "":
@@ -70,34 +58,9 @@ def gen_txn(config, filepath, parts, lineno, flag, card_acc):
     if "退款" in parts[5]:
         tags.add("refund")
 
-    txn = data.Transaction(
-        meta=metadata,
-        date=date,
-        flag=flag,
-        payee=payee,
-        narration=narration,
-        tags=tags,
-        links=data.EMPTY_SET,
-        postings=[
-            data.Posting(
-                account=card_acc,
-                units=units1,
-                cost=None,
-                price=None,
-                flag=None,
-                meta=None,
-            ),
-            data.Posting(
-                account=account2,
-                units=None,
-                cost=None,
-                price=None,
-                flag=None,
-                meta=None,
-            ),
-        ],
+    return make_two_posting_txn(
+        filepath, lineno, date, payee, narration, tags, metadata, card_acc, account2, units1
     )
-    return txn
 
 
 class Importer(PdfImporter):

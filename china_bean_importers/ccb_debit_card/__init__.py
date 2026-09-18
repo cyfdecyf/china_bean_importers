@@ -61,7 +61,7 @@ class Importer(XlsImporter):
                     balance,
                     attach,
                     payee,
-                ) = row[:10]
+                ) = row[:9]
                 time = parse(time)
 
                 if cash == "人民币元":
@@ -90,13 +90,9 @@ class Importer(XlsImporter):
 
                 my_assert(expense is not None, f"Unknown transaction type", lineno, row)
 
-                account2, new_meta, new_tags = match_destination_and_metadata(
-                    self.config, narration, payee
+                account2 = resolve_destination(
+                    self.config, narration, payee, expense, metadata, tags
                 )
-                metadata.update(new_meta)
-                tags = tags.union(new_tags)
-                if account2 is None:
-                    account2 = unknown_account(self.config, expense)
 
                 # Handle transfer to credit/debit cards
                 parts = payee.split("/")
@@ -107,33 +103,19 @@ class Importer(XlsImporter):
                         account2 = new_account
 
                 # create transaction
-                txn = data.Transaction(
-                    meta=metadata,
-                    date=time.date(),
-                    flag=self.FLAG,
-                    payee=payee,
-                    narration=narration,
-                    tags=tags,
-                    links=data.EMPTY_SET,
-                    postings=[
-                        data.Posting(
-                            account=self.card_acc,
-                            units=units,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                        data.Posting(
-                            account=account2,
-                            units=None,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                    ],
+                entries.append(
+                    make_two_posting_txn(
+                        filepath,
+                        lineno,
+                        time.date(),
+                        payee,
+                        narration,
+                        tags,
+                        metadata,
+                        self.card_acc,
+                        account2,
+                        units,
+                    )
                 )
-                entries.append(txn)
 
         return entries

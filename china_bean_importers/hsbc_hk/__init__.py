@@ -6,7 +6,6 @@ from pathlib import Path
 
 from china_bean_importers.common import *
 from china_bean_importers.importer import CsvImporter
-from china_bean_importers.importer import FLAG
 
 
 def parse_date(str):
@@ -101,43 +100,24 @@ class Importer(CsvImporter):
 
             # find account2
             expense = units.number < 0
-            account2 = unknown_account(self.config, expense)
-            new_account, new_meta, new_tags = match_destination_and_metadata(
-                self.config, narration, payee
+            account2 = resolve_destination(
+                self.config, narration, payee, expense, metadata, tags
             )
-            if new_account:
-                account2 = new_account
-            metadata.update(new_meta)
-            tags = tags.union(new_tags)
 
             # create transaction
-            txn = data.Transaction(
-                meta=metadata,
-                date=date,
-                flag=self.FLAG,
-                payee=payee,
-                narration=narration,
-                tags=tags,
-                links=data.EMPTY_SET,
-                postings=[
-                    data.Posting(
-                        account=self.account1,
-                        units=units,
-                        cost=None,
-                        price=None,
-                        flag=None,
-                        meta=None,
-                    ),
-                    data.Posting(
-                        account=account2,
-                        units=None,
-                        cost=None,
-                        price=None,
-                        flag=None,
-                        meta=None,
-                    ),
-                ],
+            entries.append(
+                make_two_posting_txn(
+                    filepath,
+                    line_no,
+                    date,
+                    payee,
+                    narration,
+                    tags,
+                    metadata,
+                    self.account1,
+                    account2,
+                    units,
+                )
             )
-            entries.append(txn)
 
         return entries

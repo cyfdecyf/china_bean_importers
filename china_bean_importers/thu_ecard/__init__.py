@@ -87,43 +87,24 @@ class Importer(CsvImporter):
 
             source_config = self.config["importers"]["thu_ecard"]
             account1 = source_config["account"]
-            account2 = unknown_account(self.config, expense)
-            new_account, new_meta, new_tags = match_destination_and_metadata(
-                self.config, summary, payee
+            account2 = resolve_destination(
+                self.config, summary, payee, expense, metadata, tags
             )
-            if new_account:
-                account2 = new_account
-            metadata.update(new_meta)
-            tags = tags.union(new_tags)
 
             # create transaction
-            txn = data.Transaction(
-                meta=metadata,
-                date=time.date(),
-                flag=self.FLAG,
-                payee=payee,
-                narration=summary,
-                tags=tags,
-                links=data.EMPTY_SET,
-                postings=[
-                    data.Posting(
-                        account=account1,
-                        units=units,
-                        cost=None,
-                        price=None,
-                        flag=None,
-                        meta=None,
-                    ),
-                    data.Posting(
-                        account=account2,
-                        units=None,
-                        cost=None,
-                        price=None,
-                        flag=None,
-                        meta=None,
-                    ),
-                ],
+            entries.append(
+                make_two_posting_txn(
+                    filepath,
+                    lineno,
+                    time.date(),
+                    payee,
+                    summary,
+                    tags,
+                    metadata,
+                    account1,
+                    account2,
+                    units,
+                )
             )
-            entries.append(txn)
 
         return entries

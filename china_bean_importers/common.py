@@ -2,9 +2,13 @@ import re
 import sys
 from typing import NamedTuple
 
+from beancount.core import data
 
 card_tail_pattern = re.compile(r".*银行.*\(([0-9]{4})\)")
 common_date_pattern = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2})")
+
+# Flag used for all imported transactions.
+FLAG = "*"
 
 # a map from currency name(chinese) to currency code(ISO 4217)
 currency_code_map = {
@@ -148,6 +152,96 @@ def match_currency_code(currency_name):
     return (
         currency_code_map[currency_name] if currency_name in currency_code_map else None
     )
+
+
+def resolve_destination(
+    config, narration, payee, expense, metadata, tags, account=None
+) -> str:
+    """Resolve the destination account for one bill item.
+
+    Matches detail_mappings (merging their metadata/tags into the passed
+    metadata dict and tags set), then falls back to `account` if given (an
+    importer-specific special case), then to the configured unknown account.
+    """
+    new_account, new_meta, new_tags = match_destination_and_metadata(
+        config, narration, payee
+    )
+    metadata.update(new_meta)
+    tags.update(new_tags)
+    if account is None:
+        account = new_account
+    if account is None:
+        account = unknown_account(config, expense)
+    return account
+
+
+def make_two_posting_txn(
+    filepath,
+    lineno,
+    date,
+    payee,
+    narration,
+    tags,
+    metadata,
+    account1,
+    account2,
+    units,
+    price=None,
+    flag=FLAG,
+) -> data.Transaction:
+    """Build a simple transaction: one posting with units and one without."""
+    return data.Transaction(
+        meta=metadata,
+        date=date,
+        flag=flag,
+        payee=payee,
+        narration=narration,
+        tags=tags,
+        links=data.EMPTY_SET,
+        postings=[
+            data.Posting(
+                account=account1,
+                units=units,
+                cost=None,
+                price=price,
+                flag=None,
+                meta=None,
+            ),
+            data.Posting(
+                account=account2,
+                units=None,
+                cost=None,
+                price=None,
+                flag=None,
+                meta=None,
+            ),
+        ],
+    )
+
+
+def should_skip_by_blacklist(config, narration, date, units, refund=False) -> bool:
+    """Shared blacklist handling for bank statement importers.
+
+    Blacklisted expenses are always skipped; blacklisted refunds are skipped
+    when `refund` is true; blacklisted income is kept (it would otherwise be
+    missing from the ledger, unlike an expense which is duplicated by the
+    wechat/alipay importers).
+    """
+    if not in_blacklist(config, narration):
+        return False
+    print(
+        f"Item in blacklist: {date} {narration} [{units}]",
+        file=sys.stderr,
+        end=" -- ",
+    )
+    if units.number < 0:
+        print("Expense skipped", file=sys.stderr)
+        return True
+    if refund:
+        print("Refund skipped", file=sys.stderr)
+        return True
+    print("Income kept in record", file=sys.stderr)
+    return False
 
 
 def unknown_account(config, expense) -> str:

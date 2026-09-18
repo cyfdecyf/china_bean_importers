@@ -4,7 +4,6 @@ from beancount.core import data
 from beancount.core.data import D
 
 from china_bean_importers.common import *
-from china_bean_importers.importer import FLAG
 
 
 class Importer(Importer):
@@ -97,42 +96,25 @@ class Importer(Importer):
 
                 expense = True # TODO
                 account1 = find_account_by_card_number(self.config, card_number)
-                account2, new_meta, new_tags = match_destination_and_metadata(
-                    self.config, narration, payee
+                my_assert(account1, f"Unknown card number {card_number}", i, cols)
+                account2 = resolve_destination(
+                    self.config, narration, payee, expense, metadata, tags
                 )
-                metadata.update(new_meta)
-                tags = tags.union(new_tags)
-                if account2 is None:
-                    account2 = unknown_account(self.config, expense)
 
                 # create transaction
-                txn = data.Transaction(
-                    meta=metadata,
-                    date=time.date(),
-                    flag=self.FLAG,
-                    payee=payee,
-                    narration=narration,
-                    tags=tags,
-                    links=data.EMPTY_SET,
-                    postings=[
-                        data.Posting(
-                            account=account1,
-                            units=units,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                        data.Posting(
-                            account=account2,
-                            units=None,
-                            cost=None,
-                            price=None,
-                            flag=None,
-                            meta=None,
-                        ),
-                    ],
+                entries.append(
+                    make_two_posting_txn(
+                        filepath,
+                        i,
+                        time.date(),
+                        payee,
+                        narration,
+                        tags,
+                        metadata,
+                        account1,
+                        account2,
+                        units,
+                    )
                 )
-                entries.append(txn)
 
         return entries

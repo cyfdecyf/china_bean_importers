@@ -6,7 +6,6 @@ import csv
 import re
 
 from china_bean_importers.common import *
-from china_bean_importers.importer import FLAG
 
 FOREIGN_CURR_TX = re.compile(
     r"^(?P<desc>.*?)\s*?(?P<country>[A-Z]+)(?P<amount>[-\d.]+)\s*(?P<currency>[A-Z]+)$"
@@ -204,37 +203,19 @@ class Importer(Importer):
             )
             return None
 
-        if m := match_destination_and_metadata(self.config, orig_narration, payee):
-            (account2, new_meta, new_tags) = m
-            metadata.update(new_meta)
-            tags = tags.union(new_tags)
-        if account2 is None:
-            account2 = unknown_account(self.config, units.number < 0)
+        account2 = resolve_destination(
+            self.config, orig_narration, payee, units.number < 0, metadata, tags
+        )
 
-        return data.Transaction(
-            meta=metadata,
-            date=date,
-            flag=self.FLAG,
-            payee=payee,
-            narration=narration,
-            tags=tags,
-            links=data.EMPTY_SET,
-            postings=[
-                data.Posting(
-                    account=account1,
-                    units=units,
-                    cost=None,
-                    price=None,
-                    flag=None,
-                    meta=None,
-                ),
-                data.Posting(
-                    account=account2,
-                    units=None,
-                    cost=None,
-                    price=None,
-                    flag=None,
-                    meta=None,
-                ),
-            ],
+        return make_two_posting_txn(
+            filepath,
+            lineno,
+            date,
+            payee,
+            narration,
+            tags,
+            metadata,
+            account1,
+            account2,
+            units,
         )

@@ -6,8 +6,6 @@ from beangulp import Importer
 
 from china_bean_importers.common import *
 
-FLAG = "*"
-
 
 class BaseImporter(Importer):
     FLAG = FLAG

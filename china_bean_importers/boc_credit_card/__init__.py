@@ -7,7 +7,6 @@ import re
 import sys
 
 from china_bean_importers.common import *
-from china_bean_importers.importer import FLAG
 
 
 class Importer(Importer):
@@ -308,14 +307,9 @@ class Importer(Importer):
                 )
                 continue
 
-            if m := match_destination_and_metadata(
-                self.config, orig_narration, payee
-            ):  # match twice with narration
-                (account2, new_meta, new_tags) = m
-                metadata.update(new_meta)
-                tags = tags.union(new_tags)
-            if account2 is None:
-                account2 = unknown_account(self.config, expense)
+            account2 = resolve_destination(
+                self.config, orig_narration, payee, units.number < 0, metadata, tags
+            )
 
             price = None
             if "还款成功" in narration:
@@ -340,33 +334,20 @@ class Importer(Importer):
             #     account1, account2 = account2, account1
             #     units1 = -units1
 
-            txn = data.Transaction(
-                meta=metadata,
-                date=date.date(),
-                flag=self.FLAG,
-                payee=payee,
-                narration=narration,
-                tags=tags,
-                links=data.EMPTY_SET,
-                postings=[
-                    data.Posting(
-                        account=account1,
-                        units=units,
-                        cost=None,
-                        price=price,
-                        flag=None,
-                        meta=None,
-                    ),
-                    data.Posting(
-                        account=account2,
-                        units=None,
-                        cost=None,
-                        price=None,
-                        flag=None,
-                        meta=None,
-                    ),
-                ],
+            entries.append(
+                make_two_posting_txn(
+                    filepath,
+                    lineno,
+                    date.date(),
+                    payee,
+                    narration,
+                    tags,
+                    metadata,
+                    account1,
+                    account2,
+                    units,
+                    price=price,
+                )
             )
-            entries.append(txn)
 
         return entries

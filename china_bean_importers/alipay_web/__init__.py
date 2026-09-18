@@ -6,7 +6,6 @@ import csv
 import re
 
 from china_bean_importers.common import *
-from china_bean_importers.importer import FLAG
 
 
 class Importer(Importer):
@@ -58,13 +57,10 @@ class Importer(Importer):
                     narration = row[8]
 
                     account1 = self.config["importers"]["alipay"]["account"]
-                    account2, new_meta, new_tags = match_destination_and_metadata(
-                        self.config, narration, payee
+                    tags = set()
+                    account2 = resolve_destination(
+                        self.config, narration, payee, row[10] == "支出", metadata, tags
                     )
-                    metadata.update(new_meta)
-                    tags = set(new_tags)
-                    if account2 is None:
-                        account2 = unknown_account(self.config, row[10] == "支出")
 
                     if row[10] == "支出":
                         units1 = -units
@@ -73,32 +69,17 @@ class Importer(Importer):
                     else:
                         assert False
 
-                    txn = data.Transaction(
-                        meta=metadata,
-                        date=date,
-                        flag=self.FLAG,
-                        payee=payee,
-                        narration=narration,
-                        tags=tags,
-                        links=data.EMPTY_SET,
-                        postings=[
-                            data.Posting(
-                                account=account1,
-                                units=units1,
-                                cost=None,
-                                price=None,
-                                flag=None,
-                                meta=None,
-                            ),
-                            data.Posting(
-                                account=account2,
-                                units=None,
-                                cost=None,
-                                price=None,
-                                flag=None,
-                                meta=None,
-                            ),
-                        ],
+                    txn = make_two_posting_txn(
+                        filepath,
+                        lineno,
+                        date,
+                        payee,
+                        narration,
+                        tags,
+                        metadata,
+                        account1,
+                        account2,
+                        units1,
                     )
                     entries.append(txn)
         return entries
