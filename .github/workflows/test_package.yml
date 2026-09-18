@@ -23,5 +23,7 @@ jobs:
         run: uv sync
       - name: Test basic functionality
         run: uv run python -c 'from china_bean_importers import *'
+      - name: Run pytest
+        run: uv run --group dev pytest tests
       - name: Run pylint
         run: uv run --with pylint pylint china_bean_importers || true

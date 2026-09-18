@@ -8,3 +8,4 @@ build/
 .vscode/
 .zcode/
 .ropeproject/
+.spec-workflow/

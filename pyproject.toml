@@ -17,3 +17,12 @@ dependencies = [
     "python-dateutil",
 ]
 urls.repository = "https://github.com/cyfdecyf/china_bean_importers"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pandas",
+    "openpyxl",
+    "xlrd",
+    "xlwt",
+]

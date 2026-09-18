@@ -11,12 +11,15 @@
 ```shell
 uv sync                                                # 安装依赖
 uv run python -c 'from china_bean_importers import *'  # 冒烟测试
+uv run --group dev pytest tests                    # 回归测试（合成账单）
 uv run --with pylint pylint china_bean_importers       # lint（非项目依赖，CI 中带 || true，不阻塞）
 ```
 
-仓库没有单元测试；CI 只做上述 import 冒烟测试。验证 importer
-改动需要真实导出的账单文件，在用户自己的 beancount 项目中按 README 写
-`import.py`，运行 `python3 import.py extract -o imported.beancount documents`。
+仓库没有针对真实账单的测试;CI 通过 pytest 跑 `tests/` 下的合成账单回归测试
+(用 `uv run --group dev pytest tests`),另外做上述 import 冒烟测试。验证 importer
+改动最可靠的方式仍是在自己的 beancount 项目中用真实导出的账单文件运行
+`python3 import.py extract -o imported.beancount documents`;新增 importer 时应
+同步在 `tests/` 下为其添加基于合成账单的回归测试。
 
 ## 架构
 
