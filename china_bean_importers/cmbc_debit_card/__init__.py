@@ -7,62 +7,6 @@ from china_bean_importers.common import *
 from china_bean_importers.importer import PdfImporter
 
 
-def gen_txn(config, filepath, parts, lineno, flag, card_acc):
-    # my_assert(len(parts) >= 10 or len(parts) == 5, f'Cannot parse line in PDF', lineno, parts)
-    #    0       1       2       3      4        5        6      7        8         9           10
-    # 凭证类型, 凭证号码, 交易时间, 摘要, 交易金额, 账户余额, 现转标志, 交易渠道, 交易机构, 对方户名/账号, 对方行名
-    # either 11/10 items, or only [2:6] is contained
-
-    # fill to 11 fields
-    if parts[0][:2] == "20":
-        parts = [""] * 2 + parts
-    elif parts[0] == "其他":
-        parts = [""] + parts
-    parts = parts + [""] * (11 - len(parts))
-
-    if "/" in parts[9]:
-        payee, payee_account = parts[9].split("/")
-    else:
-        payee, payee_account = parts[9], ""
-    narration = parts[3]
-    full_time = parse(parts[2])
-    date = full_time.date()
-    units1 = data.Amount(D(parts[4]), "CNY")
-
-    # check blacklist
-    if should_skip_by_blacklist(config, narration, date, units1):
-        return None
-
-    metadata = data.new_metadata(filepath, lineno)
-    metadata["time"] = full_time.time().isoformat()
-    if parts[7] != "":
-        metadata["source"] = parts[7]
-    if payee_account != "":
-        metadata["payee_account"] = payee_account
-    if parts[10] != "":
-        metadata["payee_branch"] = parts[10]
-
-    tags = set()
-
-    account2 = resolve_destination(
-        config, narration, payee, units1.number < 0, metadata, tags
-    )
-
-    # try to find transfer destination account
-    if parts[9] != "":
-        card_number2 = parts[9][-4:]
-        new_account = find_account_by_card_number(config, card_number2)
-        if new_account is not None:
-            account2 = new_account
-
-    if "退款" in parts[5]:
-        tags.add("refund")
-
-    return make_two_posting_txn(
-        filepath, lineno, date, payee, narration, tags, metadata, card_acc, account2, units1
-    )
-
-
 class Importer(PdfImporter):
     def __init__(self, config) -> None:
         super().__init__(config)
@@ -92,4 +36,58 @@ class Importer(PdfImporter):
         my_assert(self.card_acc, f"Unknown card number {card_number}", 0, 0)
 
     def generate_tx(self, row, lineno, filepath: str):
-        return gen_txn(self.config, filepath, row, lineno, self.FLAG, self.card_acc)
+        parts = row
+
+        # my_assert(len(parts) >= 10 or len(parts) == 5, f'Cannot parse line in PDF', lineno, parts)
+        #    0       1       2       3      4        5        6      7        8         9           10
+        # 凭证类型, 凭证号码, 交易时间, 摘要, 交易金额, 账户余额, 现转标志, 交易渠道, 交易机构, 对方户名/账号, 对方行名
+        # either 11/10 items, or only [2:6] is contained
+
+        # fill to 11 fields
+        if parts[0][:2] == "20":
+            parts = [""] * 2 + parts
+        elif parts[0] == "其他":
+            parts = [""] + parts
+        parts = parts + [""] * (11 - len(parts))
+
+        if "/" in parts[9]:
+            payee, payee_account = parts[9].split("/")
+        else:
+            payee, payee_account = parts[9], ""
+        narration = parts[3]
+        full_time = parse(parts[2])
+        date = full_time.date()
+        units1 = data.Amount(D(parts[4]), "CNY")
+
+        # check blacklist
+        if should_skip_by_blacklist(self.config, narration, date, units1):
+            return None
+
+        metadata = data.new_metadata(filepath, lineno)
+        metadata["time"] = full_time.time().isoformat()
+        if parts[7] != "":
+            metadata["source"] = parts[7]
+        if payee_account != "":
+            metadata["payee_account"] = payee_account
+        if parts[10] != "":
+            metadata["payee_branch"] = parts[10]
+
+        tags = set()
+
+        account2 = resolve_destination(
+            self.config, narration, payee, units1.number < 0, metadata, tags
+        )
+
+        # try to find transfer destination account
+        if parts[9] != "":
+            card_number2 = parts[9][-4:]
+            new_account = find_account_by_card_number(self.config, card_number2)
+            if new_account is not None:
+                account2 = new_account
+
+        if "退款" in parts[5]:
+            tags.add("refund")
+
+        return make_two_posting_txn(
+            filepath, lineno, date, payee, narration, tags, metadata, self.card_acc, account2, units1
+        )

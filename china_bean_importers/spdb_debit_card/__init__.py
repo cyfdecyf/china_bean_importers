@@ -9,52 +9,6 @@ from china_bean_importers.common import *
 from china_bean_importers.importer import PdfTableImporter
 
 
-def gen_txn(config, filepath, parts, lineno, flag, card_acc, currency_code):
-    my_assert(len(parts) == 9, "Cannot parse line in PDF", lineno, parts)
-    #    0       1        2        3       4       5         6        7      8
-    # 交易日期, 交易时间, 交易账号, 交易名称, 交易金额, 账户余额, 对手姓名, 对手账号, 交易摘要
-    date = parse(parts[0]).date()
-    time_raw = parts[1]
-    time = f"{time_raw[:2]}:{time_raw[2:4]}:{time_raw[4:6]}"
-    # self_account = parts[2]
-    narration = parts[3]
-    amount_ = parts[4]
-    balance = parts[5]
-    payee = parts[6]
-    payee_account = parts[7]
-
-    units1 = amount.Amount(D(amount_), currency_code)
-    is_expense = amount_.startswith('-')
-    # check blacklist
-    if should_skip_by_blacklist(config, narration, date, units1):
-        return None
-
-    metadata = data.new_metadata(filepath, lineno)
-    metadata["time"] = time
-    metadata["balance"] = balance
-    if payee_account != '':
-        metadata["payee_account"] = payee_account
-
-    tags = set()
-
-    account2 = resolve_destination(
-        config, narration, payee, is_expense, metadata, tags
-    )
-
-    # Handle transfer to credit/debit cards
-    if payee_account:
-        new_account = find_account_by_card_number(config, payee_account)
-        if new_account is not None:
-            account2 = new_account
-
-    if "退款" in narration or "退款" in parts[8]:
-        tags.add("refund")
-
-    return make_two_posting_txn(
-        filepath, lineno, date, payee, narration, tags, metadata, card_acc, account2, units1
-    )
-
-
 class Importer(PdfTableImporter):
     def __init__(self, config) -> None:
         super().__init__(config)
@@ -86,13 +40,49 @@ class Importer(PdfTableImporter):
         assert match
         self.currency_code = match[1]
 
-    def generate_tx(self, row: list[str], lineno: int, filepath: str):
-        return gen_txn(
-            self.config,
-            filepath,
-            row,
-            lineno,
-            self.FLAG,
-            self.card_acc,
-            self.currency_code,
+    def generate_tx(self, row, lineno, filepath: str):
+        parts = row
+
+        my_assert(len(parts) == 9, "Cannot parse line in PDF", lineno, parts)
+        #    0       1        2        3       4       5         6        7      8
+        # 交易日期, 交易时间, 交易账号, 交易名称, 交易金额, 账户余额, 对手姓名, 对手账号, 交易摘要
+        date = parse(parts[0]).date()
+        time_raw = parts[1]
+        time = f"{time_raw[:2]}:{time_raw[2:4]}:{time_raw[4:6]}"
+        # self_account = parts[2]
+        narration = parts[3]
+        amount_ = parts[4]
+        balance = parts[5]
+        payee = parts[6]
+        payee_account = parts[7]
+
+        units1 = amount.Amount(D(amount_), self.currency_code)
+        is_expense = amount_.startswith('-')
+        # check blacklist
+        if should_skip_by_blacklist(self.config, narration, date, units1):
+            return None
+
+        metadata = data.new_metadata(filepath, lineno)
+        metadata["time"] = time
+        metadata["balance"] = balance
+        if payee_account != '':
+            metadata["payee_account"] = payee_account
+
+        tags = set()
+
+        account2 = resolve_destination(
+            self.config, narration, payee, is_expense, metadata, tags
+        )
+
+        # Handle transfer to credit/debit cards
+        if payee_account:
+            new_account = find_account_by_card_number(self.config, payee_account)
+            if new_account is not None:
+                account2 = new_account
+
+        if "退款" in narration or "退款" in parts[8]:
+            tags.add("refund")
+
+        return make_two_posting_txn(
+            filepath, lineno, date, payee, narration, tags, metadata, self.card_acc, account2, units1
         )

@@ -56,6 +56,15 @@ class TestBillDetailMapping:
         account, _, _, _ = m.match("美团", "别的商家")
         assert account == "Expenses:Meituan"
 
+    def test_same_as_narration_without_narration_keywords(self):
+        from china_bean_importers.common import SAME_AS_NARRATION
+
+        # payee_keywords=SAME_AS_NARRATION with no narration_keywords must not
+        # crash even though there is nothing to iterate.
+        m = BillDetailMapping(payee_keywords=SAME_AS_NARRATION)
+        account, _, _, _ = m.match("描述", "商家")
+        assert account is None
+
     def test_none_arguments(self):
         m = BillDetailMapping(["京东"], ["京东"], "Expenses:JD")
         account, _, _, _ = m.match(None, None)

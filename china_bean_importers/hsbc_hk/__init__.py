@@ -8,9 +8,8 @@ from china_bean_importers.common import *
 from china_bean_importers.importer import CsvImporter
 
 
-def parse_date(str):
-    DATE_FORMAT = "%d/%m/%Y"
-    return datetime.strptime(str, DATE_FORMAT)
+def parse_date(s):
+    return datetime.strptime(s, "%d/%m/%Y")
 
 
 class Importer(CsvImporter):

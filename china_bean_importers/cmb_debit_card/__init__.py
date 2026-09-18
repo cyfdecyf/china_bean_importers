@@ -9,57 +9,8 @@ from china_bean_importers.importer import PdfImporter
 PAYEE_RE = re.compile(r"(\D*)(\d+)")
 
 
-def gen_txn(config, filepath, parts, lineno, flag, card_acc, real_name):
-    # HACK: handle `Customer Type` being a separate row
-    if parts == ['Customer Type']:
-        return None
-
-    # Customer Type can be empty
-    assert len(parts) == 6 or len(parts) == 7
-
-    # parts[5]: 对手信息
-    payee = parts[5]
-    if len(parts) == 7:
-        # parts[6]: 客户摘要
-        narration = parts[6]
-    else:
-        # parts[4]: 交易摘要
-        narration = parts[4]
-    # parts[0]: 记账日期
-    date = parse(parts[0]).date()
-    # parts[2]: 金额
-    units1 = data.Amount(D(parts[2]), "CNY")
-    # parts[3]: 余额
-    balance = data.Amount(D(parts[3]), "CNY")
-
-    metadata = data.new_metadata(filepath, lineno)
-    metadata["balance"] = str(balance)
-    tags = set()
-
-    payee_account = None
-    if m := PAYEE_RE.match(payee):
-        payee, payee_account = m.groups()
-    if payee_account:
-        metadata["payee_account"] = payee_account
-
-    account2 = resolve_destination(config, narration, payee, True, metadata, tags)
-
-    # Handle transfer to credit/debit cards
-    # parts[5]: 对手信息
-    if payee_account:
-        new_account = find_account_by_card_number(config, payee_account)
-        if new_account is not None:
-            account2 = new_account
-
-    return make_two_posting_txn(
-        filepath, lineno, date, payee, narration, tags, metadata, card_acc, account2, units1
-    )
-
-
 class Importer(PdfImporter):
     def __init__(self, config) -> None:
-        import re
-
         super().__init__(config)
         self.match_keywords = ["招商银行交易流水"]
         self.file_account_name = "cmb_debit_card"
@@ -82,6 +33,60 @@ class Importer(PdfImporter):
         my_assert(self.card_acc, f"Unknown card number {card_number}", 0, 0)
 
     def generate_tx(self, row, lineno, filepath: str):
-        return gen_txn(
-            self.config, filepath, row, lineno, self.FLAG, self.card_acc, self.real_name
+        parts = row
+
+        # HACK: handle `Customer Type` being a separate row
+        if parts == ["Customer Type"]:
+            return None
+
+        # Customer Type can be empty
+        assert len(parts) == 6 or len(parts) == 7
+
+        # parts[5]: 对手信息
+        payee = parts[5]
+        if len(parts) == 7:
+            # parts[6]: 客户摘要
+            narration = parts[6]
+        else:
+            # parts[4]: 交易摘要
+            narration = parts[4]
+        # parts[0]: 记账日期
+        date = parse(parts[0]).date()
+        # parts[2]: 金额
+        units1 = data.Amount(D(parts[2]), "CNY")
+        # parts[3]: 余额
+        balance = data.Amount(D(parts[3]), "CNY")
+
+        metadata = data.new_metadata(filepath, lineno)
+        metadata["balance"] = str(balance)
+        tags = set()
+
+        payee_account = None
+        if m := PAYEE_RE.match(payee):
+            payee, payee_account = m.groups()
+        if payee_account:
+            metadata["payee_account"] = payee_account
+
+        account2 = resolve_destination(
+            self.config, narration, payee, True, metadata, tags
+        )
+
+        # Handle transfer to credit/debit cards
+        # parts[5]: 对手信息
+        if payee_account:
+            new_account = find_account_by_card_number(self.config, payee_account)
+            if new_account is not None:
+                account2 = new_account
+
+        return make_two_posting_txn(
+            filepath,
+            lineno,
+            date,
+            payee,
+            narration,
+            tags,
+            metadata,
+            self.card_acc,
+            account2,
+            units1,
         )

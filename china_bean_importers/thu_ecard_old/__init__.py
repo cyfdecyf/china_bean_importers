@@ -43,19 +43,19 @@ class Importer(CsvImporter):
             # parse some basic info
             time = parse(row[4])
             units = data.Amount(D(row[5]), "CNY")
-            _, payee, type, terminal = row[:4]
+            _, payee, tx_type, terminal = row[:4]
             metadata["terminal"] = terminal
             metadata["time"] = time.time().isoformat()
             metadata["payment_method"] = "清华大学校园卡"
 
             expense = None
 
-            if type == "消费" or "自助缴费" in type:
+            if tx_type == "消费" or "自助缴费" in tx_type:
                 expense = True
-            elif "领取" in type or type == "支付宝充值":
+            elif "领取" in tx_type or tx_type == "支付宝充值":
                 expense = False
 
-            my_assert(expense is not None, f"Unknown transaction type", lineno, row)
+            my_assert(expense is not None, "Unknown transaction type", lineno, row)
 
             if expense:
                 units = -units
@@ -63,7 +63,7 @@ class Importer(CsvImporter):
             source_config = self.config["importers"]["thu_ecard"]
             account1 = source_config["account"]
             account2 = resolve_destination(
-                self.config, type, payee, expense, metadata, tags
+                self.config, tx_type, payee, expense, metadata, tags
             )
 
             # TODO: obtain a mapping from terminal no. to location?
@@ -75,7 +75,7 @@ class Importer(CsvImporter):
                     lineno,
                     time.date(),
                     payee,
-                    type,
+                    tx_type,
                     tags,
                     metadata,
                     account1,

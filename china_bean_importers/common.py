@@ -51,7 +51,7 @@ class BillDetailMapping(NamedTuple):
     def match(
         self, desc: str, payee: str
     ) -> tuple[str | None, dict[str, object], set[str], int]:
-        assert self.match_logic == "OR" or self.match_logic == "AND"
+        assert self.match_logic in ("OR", "AND")
 
         # match narration first
         narration_match = False
@@ -69,10 +69,13 @@ class BillDetailMapping(NamedTuple):
                 if self.payee_keywords is SAME_AS_NARRATION
                 else self.payee_keywords
             )
-            for keyword in keywords:
-                if keyword in payee:
-                    payee_match = True
-                    break
+            # keywords is None when payee_keywords is SAME_AS_NARRATION but no
+            # narration keywords are configured: nothing to match against
+            if keywords is not None:
+                for keyword in keywords:
+                    if keyword in payee:
+                        payee_match = True
+                        break
 
         if self.match_logic == "OR" and (narration_match or payee_match):
             return self.canonicalize()
@@ -82,9 +85,40 @@ class BillDetailMapping(NamedTuple):
 
 
 def match_card_tail(src):
-    assert type(src) == str
+    assert isinstance(src, str)
     m = card_tail_pattern.match(src)
     return m[1] if m else None
+
+
+def read_eml_html(
+    filepath: str,
+    *,
+    encoding: str = "utf-8",
+    b64: bool = False,
+    unwrap_nested: bool = False,
+) -> tuple[str, str]:
+    """Parse an HTML email statement; returns (subject, html).
+
+    b64 selects base64 transfer encoding instead of quoted-printable;
+    unwrap_nested expects the HTML part wrapped in a container multipart
+    (as produced by some banks); encoding is the charset of the body.
+    """
+    import base64
+    import email
+    import quopri
+    from email import policy
+    from html import unescape
+
+    with open(filepath, encoding="utf-8") as f:
+        raw_email = email.message_from_file(f, policy=policy.default)
+    payload = raw_email.get_body().get_payload()
+    if unwrap_nested:
+        payload = payload[0].get_body().get_payload()
+    if b64:
+        html = base64.b64decode(payload).decode(encoding)
+    else:
+        html = quopri.decodestring(payload).decode(encoding)
+    return raw_email["Subject"], unescape(html).replace("\xa0", " ")
 
 
 def open_pdf(config, name):
@@ -92,7 +126,7 @@ def open_pdf(config, name):
 
     doc = fitz.open(name)
     if doc.is_encrypted:
-        for password in config["pdf_passwords"]:
+        for password in config.get("pdf_passwords", []):
             doc.authenticate(password)
         if doc.is_encrypted:
             return None

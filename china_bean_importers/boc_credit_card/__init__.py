@@ -54,18 +54,10 @@ class Importer(Importer):
         elif filepath.upper().endswith(".EML"):
             self.type = "email"
             from bs4 import BeautifulSoup
-            import email
-            from email import policy
-            import quopri
 
             try:
-                raw_email = email.message_from_file(
-                    open(filepath), policy=policy.default
-                )
-                raw_body_html = quopri.decodestring(
-                    raw_email.get_body().get_payload()
-                ).decode()
-                self.body = BeautifulSoup(raw_body_html, features="lxml")
+                _, html = read_eml_html(filepath)
+                self.body = BeautifulSoup(html, features="lxml")
                 return self.body.title.text == "中国银行电子帐单"
             except Exception:
                 return False
@@ -108,6 +100,7 @@ class Importer(Importer):
 
         if self.type == "pdf":
             card_number = None
+            currency = None
             begin = False
             lineno = 0
 

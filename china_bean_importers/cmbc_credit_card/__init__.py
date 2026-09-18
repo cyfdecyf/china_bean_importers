@@ -40,30 +40,20 @@ class Importer(Importer):
         elif filepath.upper().endswith(".EML"):
             self.type = "email"
             from bs4 import BeautifulSoup
-            import email
-            from email import policy
-            import base64
-            from html import unescape
 
             try:
-                raw_email = email.message_from_file(
-                    open(filepath), policy=policy.default
+                # weird encapsulation: html part wrapped in a container
+                # multipart, base64 + gbk
+                subject, html = read_eml_html(
+                    filepath, encoding="gbk", b64=True, unwrap_nested=True
                 )
-                # weird encapsulation
-                raw_body_html = unescape(
-                    base64.b64decode(
-                        raw_email.get_body().get_payload()[0].get_body().get_payload()
-                    ).decode("gbk")
-                )
-                raw_body_html = raw_body_html.replace("\xa0", " ")
-                soup = BeautifulSoup(raw_body_html, features="lxml")
-                self.body = soup.body
+                self.body = BeautifulSoup(html, features="lxml").body
                 # find 本期账单日
                 stmtDateCell = self.body.select("span#fixBand36")[
                     0
                 ].parent.nextSibling.font.text
                 self.stmt_date = parse(stmtDateCell)
-                return "民生信用卡" in raw_email["Subject"]
+                return "民生信用卡" in subject
             except Exception:
                 return False
 

@@ -18,27 +18,14 @@ class Importer(Importer):
         if filepath.upper().endswith(".EML"):
             self.type = "email"
             from bs4 import BeautifulSoup
-            import email
-            from email import policy
-            import base64
-            from html import unescape
 
             try:
-                raw_email = email.message_from_file(
-                    open(filepath), policy=policy.default
-                )
-                raw_body_html = unescape(
-                    base64.b64decode(
-                        raw_email.get_body().get_payload()
-                    ).decode("utf-8")
-                )
-                raw_body_html = raw_body_html.replace("\xa0", " ")
-                soup = BeautifulSoup(raw_body_html, features="lxml")
-                self.body = soup.body
+                subject, html = read_eml_html(filepath, b64=True)
+                self.body = BeautifulSoup(html, features="lxml").body
                 # find 本期账单日
                 stmtDateCell = self.body.find("font", string="本期账单日").parent.parent.parent.find_all("font")[2].text
                 self.stmt_date = parse(stmtDateCell)
-                return "中国建设银行信用卡" in raw_email["Subject"]
+                return "中国建设银行信用卡" in subject
             except Exception:
                 return False
 

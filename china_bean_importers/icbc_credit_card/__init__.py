@@ -65,25 +65,17 @@ class Importer(Importer):
     def identify(self, filepath: str):
         if filepath.upper().endswith(".EML"):
             self.type = "email"
-
             from bs4 import BeautifulSoup
-            from email import policy
-            from email.parser import Parser
-            import quopri
 
-            with open(filepath, "r", encoding="utf-8") as f:
-                raw_email = Parser(policy=policy.default).parse(
-                    f)
-                raw_body_html = quopri.decodestring(
-                    raw_email.get_body().get_payload())
-                self.body = BeautifulSoup(raw_body_html, features="lxml")
-                for i in self.body.find_all("td"):
-                    if "对账单生成日" in (i.string or ""):
-                        [y, m, d] = REGEX_YYYY_MM_DD.search(
-                            i.string).groups()
-                        self.stmt_date = parse(f"{y}-{m}-{d}")
-                is_workable = EMAIL_KEYWORD in raw_email["Subject"]
-                return is_workable
+            subject, html = read_eml_html(filepath)
+            self.body = BeautifulSoup(html, features="lxml")
+            for i in self.body.find_all("td"):
+                if "对账单生成日" in (i.string or ""):
+                    [y, m, d] = REGEX_YYYY_MM_DD.search(
+                        i.string
+                    ).groups()
+                    self.stmt_date = parse(f"{y}-{m}-{d}")
+            return EMAIL_KEYWORD in subject
         return False
 
     def account(self, filepath: str):
